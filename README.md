@@ -5,4 +5,6 @@ I try to learn computer network by myself via [Stanford CS144](https://cs144.git
 ## Resources
 
 - [Stanford CS144  videos](https://www.youtube.com/watch?v=r2WZNaFyrbQ&list=PL6RdenZrxrw9inR-IJv-erlOKRHjymxMN)
-- [Lab Resource](https://github.com/PKUFlyingPig/CS144-Computer-Network)
+- [PKUFlyingPig - Lab](https://github.com/PKUFlyingPig/CS144-Computer-Network)
+- [Kiprey - Lab](https://github.com/Kiprey/sponge)
+

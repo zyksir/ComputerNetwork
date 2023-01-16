@@ -4,7 +4,7 @@
 #include "byte_stream.hh"
 
 #include <cstdint>
-#include <set>
+#include <map>
 #include <string>
 
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
@@ -12,77 +12,13 @@
 class StreamReassembler {
   private:
     // Your code here -- add private members as necessary.
-    class Node {
-      public:
-        Node(size_t _index = 0, size_t _length = 0, std::string _data = "")
-            : index(_index), length(_length), data(_data) {}
-        size_t index;
-        size_t length;
-        std::string data;
-        bool operator<(const Node &rhs) const { return index < rhs.index; }
-        int merge(const Node &rhs) {
-            if (index < rhs.index) {
-                /* cannot be merged
-                 *            [ rhs ]
-                 * [ this ]
-                 */
-                if (index + length < rhs.index) {
-                    return -1;
-                }
-                /* don't need to merge
-                 *     [    rhs    ]
-                 * [       this       ]
-                 */
-                if (index + length >= rhs.index + rhs.length) {
-                    return rhs.length;
-                }
-                /* append end of rhs.data merge
-                 *     [    rhs    ]
-                 * [  this  ]
-                 */
-                int merged_bytes = index + length - rhs.index;
-                data = data + rhs.data.substr(index + length - rhs.index);
-                length = rhs.index + rhs.length - index;
-                return merged_bytes;
-            }
-            /* cannot be merged
-             *            [ this ]
-             * [ rhs ]
-             */
-            if (rhs.index + rhs.length < index) {
-                return -1;
-            }
-
-            /* don't need to merge
-             *     [    this    ]
-             * [       rhs       ]
-             */
-            if (rhs.index + rhs.length >= index + length) {
-                int merged_bytes = length;
-                index = rhs.index;
-                length = rhs.length;
-                data = rhs.data;
-                return merged_bytes;
-            }
-            /* append end of rhs.data merge
-             *     [    this    ]
-             * [  rhs  ]
-             */
-            int merged_bytes = rhs.index + rhs.length - index;
-            data = rhs.data + data.substr(rhs.index + rhs.length - index);
-            length = index + length - rhs.index;
-            index = rhs.index;
-            return merged_bytes;
-        }
-    };
-
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
 
-    std::set<Node> _unassemble_buffer;
+    std::map<size_t, std::string> _unassemble_buffer;
     size_t _next_pos;
     size_t _unassembled_bytes;
-    bool _eof;
+    size_t _eof_index;
 
     void insert_pair(const std::string &data, const size_t index);
     void write_output();

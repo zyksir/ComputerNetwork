@@ -14,74 +14,106 @@ using namespace std;
 
 StreamReassembler::StreamReassembler(const size_t capacity)
     : _output(capacity), _capacity(capacity), _unassemble_buffer(), 
-    _next_pos(0), _unassembled_bytes(0), _eof(false) {}
+    _next_pos(0), _unassembled_bytes(0), _eof_index(-1) {}
 
 //! \details This function accepts a substring (aka a segment) of bytes,
 //! possibly out-of-order, from the logical stream, and assembles any newly
 //! contiguous substrings and writes them into the output stream in order.
 void StreamReassembler::push_substring(const string &data, const size_t index, const bool eof) {
-    if (index > _next_pos + _capacity) {
-        return;
-    }
     insert_pair(data, index);
-    if (index <= _next_pos) {
-        write_output();
-    }
+    write_output();
 
     if (eof) {
-        _eof = true;
+        _eof_index = index + data.length();
     }
-    if (_eof && empty()) {
+    if (_next_pos >= _eof_index) {
         _output.end_input();
     }
 }
 
 void StreamReassembler::insert_pair(const string &data, const size_t index) {
-    size_t data_length = data.length();
-    size_t delta = 0;
-    if (index < _next_pos) {
-        if (index + data.length() <= _next_pos) {
+    size_t new_index = index;
+    // merge with string ahead of it
+    auto pre_iter = _unassemble_buffer.upper_bound(index);
+    if (pre_iter != _unassemble_buffer.begin())
+        pre_iter--;
+    if (pre_iter != _unassemble_buffer.end() && pre_iter->first <= index) {
+        const size_t pre_idx = pre_iter->first;
+        if (index < pre_idx + pre_iter->second.size())
+            new_index = pre_idx + pre_iter->second.size();
+    } else if (index < _next_pos) {
+        new_index = _next_pos;
+    }
+
+    // this string is contained by pre string
+    if (new_index >= index + data.length()) {
+        return;
+    }
+
+    // discard chars if they are out of capacity
+    size_t first_unacceptable_idx = _next_pos + _capacity - _output.buffer_size();
+    if (first_unacceptable_idx <= new_index)
+        return;
+
+    // merge with string post of it
+    size_t new_length = data.length() - (new_index - index);
+    auto post_iter = _unassemble_buffer.upper_bound(index);
+    while (post_iter != _unassemble_buffer.end() && new_index <= post_iter->first) {
+        const size_t data_end_pos = new_index + new_length;
+        // if they don't intersect with each other
+        if (post_iter->first >= data_end_pos) {
+            break;
+        }
+        // if post string is partially covered by this string
+        if (post_iter->first + post_iter->second.length() > data_end_pos) {
+            new_length = post_iter->first - new_index;
+            break;
+        }
+        // if post string is fully covered by this string
+        _unassembled_bytes -= post_iter->second.size();
+        post_iter = _unassemble_buffer.erase(post_iter);
+    }
+
+    // we don't need to insert
+    if (new_length == 0) {
+        return;
+    }
+
+    // discard out of memory chars
+    new_length = min(first_unacceptable_idx - new_index, new_length);
+
+    string new_data = data.substr(new_index - index, new_length);
+
+    // optimize 1: if we can write this data we don't insert into map 
+    if (new_index == _next_pos) {
+        const size_t write_bytes = _output.write(new_data);
+        _next_pos += write_bytes;
+        if (write_bytes == new_data.length()) {
             return;
         }
-        data_length = index + data.length() - _next_pos;
-        delta = data.length() - data_length;
+        new_index += write_bytes;
+        new_data = new_data.substr(write_bytes);
     }
-    Node node{index + delta, data_length, data.substr(delta)};
-    _unassembled_bytes += node.length;
+    // optimize 1 end
 
-    auto it = _unassemble_buffer.lower_bound(node);
-    int merged_bytes;
-    while (it != _unassemble_buffer.end() && (merged_bytes = node.merge(*it)) >= 0) {
-        _unassemble_buffer.erase(it);
-        _unassembled_bytes -= merged_bytes;
-        it = _unassemble_buffer.lower_bound(node);
-    }
-
-    while (!_unassemble_buffer.empty()) {
-        it = _unassemble_buffer.lower_bound(node);
-        if (it == _unassemble_buffer.begin()) {
-            break;
-        }
-        --it;
-        if ((merged_bytes = node.merge(*it)) < 0) {
-            break;
-        }
-        _unassemble_buffer.erase(it);
-        _unassembled_bytes -= merged_bytes;
-    }
-    _unassemble_buffer.insert(node);
+    _unassemble_buffer.emplace(new_index, new_data);
+    _unassembled_bytes += new_length;
 }
 
 void StreamReassembler::write_output() {
-    if (_unassemble_buffer.empty()) {
-        return;
-    }
     auto it = _unassemble_buffer.begin();
-    if (it->index == _next_pos) {
-        size_t write_bytes = _output.write(it->data);
+    while (!_unassemble_buffer.empty() && it->first == _next_pos && _output.remaining_capacity() > 0) {
+        const size_t write_bytes = _output.write(it->second);
         _unassembled_bytes -= write_bytes;
         _next_pos += write_bytes;
+        if (write_bytes < it->second.length()) {
+            if (write_bytes == 0) {
+                return;
+            }
+            _unassemble_buffer.emplace(_next_pos, it->second.substr(write_bytes));
+        }
         _unassemble_buffer.erase(it);
+        it = _unassemble_buffer.begin();
     }
 }
 

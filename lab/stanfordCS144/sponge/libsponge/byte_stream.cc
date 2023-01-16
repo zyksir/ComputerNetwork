@@ -1,4 +1,5 @@
 #include "byte_stream.hh"
+
 #include <sstream>
 
 // Dummy implementation of a flow-controlled in-memory byte stream.
@@ -13,15 +14,14 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 
 using namespace std;
 
-ByteStream::ByteStream(const size_t capacity):
-    _capacity(capacity),_bytes_written(0), _bytes_read(0),
-    _buffer{}, _end_input(false), _error(false) {
+ByteStream::ByteStream(const size_t capacity)
+    : _capacity(capacity), _bytes_written(0), _bytes_read(0), _buffer{}, _end_input(false), _error(false) {
     _buffer.clear();
 }
 
 size_t ByteStream::write(const string &data) {
     size_t count = min(_capacity - _buffer.size(), data.length());
-    for(size_t i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++) {
         _buffer.push_back(data[i]);
     }
     _bytes_written += count;
@@ -30,21 +30,24 @@ size_t ByteStream::write(const string &data) {
 
 //! \param[in] len bytes will be copied from the output side of the buffer
 string ByteStream::peek_output(const size_t len) const {
-    ostringstream oss;
+    // ostringstream oss;
+    string out;
     size_t end_pos = min(len, _buffer.size());
-    for(size_t i = 0; i < end_pos; ++i) {
-        oss << _buffer[i];
+    for (size_t i = 0; i < end_pos; ++i) {
+        // oss << _buffer[i];
+        out += _buffer[i];
     }
-    return oss.str();
+    return out;
+    // return oss.str();
 }
 
 //! \param[in] len bytes will be removed from the output side of the buffer
-void ByteStream::pop_output(const size_t len) { 
+void ByteStream::pop_output(const size_t len) {
     if (len > _buffer.size()) {
         set_error();
         return;
     }
-    for(size_t i = 0; i < len; ++i) {
+    for (size_t i = 0; i < len; ++i) {
         _buffer.pop_front();
     }
     _bytes_read += len;
@@ -53,18 +56,21 @@ void ByteStream::pop_output(const size_t len) {
 //! Read (i.e., copy and then pop) the next "len" bytes of the stream
 //! \param[in] len bytes will be popped and returned
 //! \returns a string
-std::string ByteStream::read(const size_t len) {
+string ByteStream::read(const size_t len) {
     if (len > _buffer.size()) {
         set_error();
         return "";
     }
     ostringstream oss;
-    for(size_t i = 0; i < len; ++i) {
-        oss << _buffer[i];
+    // string out = "";
+    for (size_t i = 0; i < len; ++i) {
+        oss << _buffer.front();
+        // out += _buffer.front();
         _buffer.pop_front();
     }
     _bytes_read += len;
     return oss.str();
+    // return out;
 }
 
 void ByteStream::end_input() { _end_input = true; }

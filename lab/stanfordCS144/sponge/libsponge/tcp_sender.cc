@@ -29,7 +29,6 @@ void TCPSender::fill_window() {
     if (_next_seqno == 0) {  // Status: CLOSED
         TCPSegment segment;
         segment.header().syn = true;
-        segment.header().seqno = next_seqno();
         send_no_empty_segment(segment);
     } else if (_next_seqno == _bytes_in_flight) {  // Status: SYN_SENT
         return;
@@ -126,12 +125,12 @@ unsigned int TCPSender::consecutive_retransmissions() const { return _timer.cons
 
 void TCPSender::send_empty_segment() {
     TCPSegment empty_segment;
-    empty_segment.header().seqno = wrap(_next_seqno, _isn);
+    empty_segment.header().seqno = next_seqno();
     _segments_out.push(empty_segment);
 }
 
 void TCPSender::send_no_empty_segment(TCPSegment &segment) {
-    segment.header().seqno = wrap(_next_seqno, _isn);
+    segment.header().seqno = next_seqno();
     _next_seqno += segment.length_in_sequence_space();
     _bytes_in_flight += segment.length_in_sequence_space();
     _segments_out.push(segment);

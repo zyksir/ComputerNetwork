@@ -16,9 +16,10 @@ class StreamReassembler {
     size_t _capacity;    //!< The maximum number of bytes
 
     std::map<size_t, std::string> _unassemble_buffer;
-    size_t _next_pos;
-    size_t _unassembled_bytes;
-    size_t _eof_index;
+    size_t _next_pos; // first unassembled index
+    size_t _unassembled_bytes; // number of unassembled bytes
+    size_t _eof_index{0};
+    bool _eof_appear_sign{false};
 
     void insert_pair(const std::string &data, const size_t index);
     void write_output();

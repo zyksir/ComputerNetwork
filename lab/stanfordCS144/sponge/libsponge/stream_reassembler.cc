@@ -17,8 +17,7 @@ StreamReassembler::StreamReassembler(const size_t capacity)
     , _capacity(capacity)
     , _unassemble_buffer()
     , _next_pos(0)
-    , _unassembled_bytes(0)
-    , _eof_index(-1) {}
+    , _unassembled_bytes(0) {}
 
 //! \details This function accepts a substring (aka a segment) of bytes,
 //! possibly out-of-order, from the logical stream, and assembles any newly
@@ -29,8 +28,9 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
 
     if (eof) {
         _eof_index = index + data.length();
+        _eof_appear_sign = true;
     }
-    if (_next_pos >= _eof_index) {
+    if (_eof_appear_sign && _next_pos >= _eof_index) {
         _output.end_input();
     }
 }

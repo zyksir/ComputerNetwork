@@ -9,6 +9,51 @@
 #include <functional>
 #include <queue>
 
+// !
+class RetransmissionTimer {
+  private:
+    bool _running;
+    const unsigned int _init_rto;
+    unsigned int _ms_since_running;
+    unsigned int _rto;
+    unsigned int _consecutive_retransmissions{0};
+
+  public:
+    RetransmissionTimer(const unsigned int retx_timeout)
+        : _running(false), _init_rto(retx_timeout), _ms_since_running(0), _rto(retx_timeout) {}
+    bool timeout(const size_t ms_since_last_tick) {
+        if (_ms_since_running + ms_since_last_tick >= _rto) {
+            return true;
+        }
+        _ms_since_running += ms_since_last_tick;
+        return false;
+    }
+    bool running() { return _running; }
+    void reset_rto() { _rto = _init_rto; }
+    void reset_timer(const size_t window_size) {
+        if (!running()) {
+            return;  // this line should never be executed
+        }
+        _ms_since_running = 0;
+        ++_consecutive_retransmissions;
+        // If the window size is nonzero, Double the value of RTO
+        if (window_size > 0) {
+            _rto *= 2;
+        }
+    }
+    void start() {
+        _running = true;
+        _ms_since_running = 0;
+        _rto = _init_rto;
+        _consecutive_retransmissions = 0;
+    }
+    void close() {
+        _running = false;
+        _consecutive_retransmissions = 0;
+    }
+    unsigned int consecutive_retransmissions() const { return _consecutive_retransmissions; };
+};
+
 //! \brief The "sender" part of a TCP implementation.
 
 //! Accepts a ByteStream, divides it up into segments and sends the
@@ -22,15 +67,22 @@ class TCPSender {
 
     //! outbound queue of segments that the TCPSender wants sent
     std::queue<TCPSegment> _segments_out{};
+    std::queue<TCPSegment> _segments_track{};
 
     //! retransmission timer for the connection
     unsigned int _initial_retransmission_timeout;
+    RetransmissionTimer _timer;
 
     //! outgoing stream of bytes that have not yet been sent
     ByteStream _stream;
 
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
+    uint64_t _max_ackno{0};
+    uint16_t _window_size{1};
+    uint64_t _bytes_in_flight{0};
+
+    void send_no_empty_segment(TCPSegment &segment);
 
   public:
     //! Initialize a TCPSender

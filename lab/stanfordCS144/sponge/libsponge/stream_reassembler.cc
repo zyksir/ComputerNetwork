@@ -13,8 +13,12 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 using namespace std;
 
 StreamReassembler::StreamReassembler(const size_t capacity)
-    : _output(capacity), _capacity(capacity), _unassemble_buffer(), 
-    _next_pos(0), _unassembled_bytes(0), _eof_index(-1) {}
+    : _output(capacity)
+    , _capacity(capacity)
+    , _unassemble_buffer()
+    , _next_pos(0)
+    , _unassembled_bytes(0)
+    , _eof_index(-1) {}
 
 //! \details This function accepts a substring (aka a segment) of bytes,
 //! possibly out-of-order, from the logical stream, and assembles any newly
@@ -84,7 +88,7 @@ void StreamReassembler::insert_pair(const string &data, const size_t index) {
 
     string new_data = data.substr(new_index - index, new_length);
 
-    // optimize 1: if we can write this data we don't insert into map 
+    // optimize 1: if we can write this data we don't insert into map
     if (new_index == _next_pos) {
         const size_t write_bytes = _output.write(new_data);
         _next_pos += write_bytes;

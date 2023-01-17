@@ -30,47 +30,38 @@ size_t ByteStream::write(const string &data) {
 
 //! \param[in] len bytes will be copied from the output side of the buffer
 string ByteStream::peek_output(const size_t len) const {
-    // ostringstream oss;
-    string out;
-    size_t end_pos = min(len, _buffer.size());
-    for (size_t i = 0; i < end_pos; ++i) {
-        // oss << _buffer[i];
-        out += _buffer[i];
+    ostringstream oss;
+    // string out;
+    size_t _len = min(len, _buffer.size());
+    for (size_t i = 0; i < _len; ++i) {
+        oss << _buffer[i];
+        // out += _buffer[i];
     }
-    return out;
-    // return oss.str();
+    // return out;
+    return oss.str();
 }
 
 //! \param[in] len bytes will be removed from the output side of the buffer
 void ByteStream::pop_output(const size_t len) {
-    if (len > _buffer.size()) {
-        set_error();
-        return;
-    }
-    for (size_t i = 0; i < len; ++i) {
+    size_t _len = min(len, _buffer.size());
+    for (size_t i = 0; i < _len; ++i) {
         _buffer.pop_front();
     }
-    _bytes_read += len;
+    _bytes_read += _len;
 }
 
 //! Read (i.e., copy and then pop) the next "len" bytes of the stream
 //! \param[in] len bytes will be popped and returned
 //! \returns a string
 string ByteStream::read(const size_t len) {
-    if (len > _buffer.size()) {
-        set_error();
-        return "";
-    }
+    size_t _len = min(len, _buffer.size());
     ostringstream oss;
-    // string out = "";
-    for (size_t i = 0; i < len; ++i) {
+    for (size_t i = 0; i < _len; ++i) {
         oss << _buffer.front();
-        // out += _buffer.front();
         _buffer.pop_front();
     }
-    _bytes_read += len;
+    _bytes_read += _len;
     return oss.str();
-    // return out;
 }
 
 void ByteStream::end_input() { _end_input = true; }

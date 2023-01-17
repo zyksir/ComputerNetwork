@@ -11,7 +11,7 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 using namespace std;
 
 void TCPReceiver::segment_received(const TCPSegment &seg) {
-    const auto& header = seg.header();
+    const auto &header = seg.header();
     if (!_syn) {
         // discard all the packages before LISTEN state;
         if (!header.syn) {
@@ -27,14 +27,12 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
     _reassembler.push_substring(seg.payload().copy(), stream_index, header.fin);
 }
 
-optional<WrappingInt32> TCPReceiver::ackno() const { 
+optional<WrappingInt32> TCPReceiver::ackno() const {
     if (!_syn) {
         return nullopt;
     }
     uint64_t bytes_written = _reassembler.stream_out().bytes_written() + 1;
-    return _isn + static_cast<uint32_t>(bytes_written) + (_reassembler.stream_out().input_ended() ? 1 : 0); 
+    return _isn + static_cast<uint32_t>(bytes_written) + (_reassembler.stream_out().input_ended() ? 1 : 0);
 }
 
-size_t TCPReceiver::window_size() const { 
-    return _capacity - _reassembler.stream_out().buffer_size(); 
-}
+size_t TCPReceiver::window_size() const { return _capacity - _reassembler.stream_out().buffer_size(); }

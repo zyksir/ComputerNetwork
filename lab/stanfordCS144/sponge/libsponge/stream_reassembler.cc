@@ -90,7 +90,7 @@ void StreamReassembler::insert_pair(const string &data, const size_t index) {
 
     // optimize 1: if we can write this data we don't insert into map
     if (new_index == _next_pos) {
-        const size_t write_bytes = _output.write(new_data);
+        const size_t write_bytes = _output.write(std::move(new_data));
         _next_pos += write_bytes;
         if (write_bytes == new_data.length()) {
             return;
@@ -100,21 +100,21 @@ void StreamReassembler::insert_pair(const string &data, const size_t index) {
     }
     // optimize 1 end
 
-    _unassemble_buffer.emplace(new_index, new_data);
+    _unassemble_buffer.emplace(new_index, std::move(new_data));
     _unassembled_bytes += new_length;
 }
 
 void StreamReassembler::write_output() {
     auto it = _unassemble_buffer.begin();
     while (!_unassemble_buffer.empty() && it->first == _next_pos && _output.remaining_capacity() > 0) {
-        const size_t write_bytes = _output.write(it->second);
+        const size_t write_bytes = _output.write(std::move(it->second));
         _unassembled_bytes -= write_bytes;
         _next_pos += write_bytes;
         if (write_bytes < it->second.length()) {
             if (write_bytes == 0) {
                 return;
             }
-            _unassemble_buffer.emplace(_next_pos, it->second.substr(write_bytes));
+            _unassemble_buffer.emplace(_next_pos, std::move(it->second.substr(write_bytes)));
         }
         _unassemble_buffer.erase(it);
         it = _unassemble_buffer.begin();

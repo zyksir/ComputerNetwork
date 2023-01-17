@@ -25,7 +25,7 @@ class TCPConnection {
     bool _established{false};
 
     bool send_segments();
-    // void send_rst_segment();
+    void send_rst_segment();
     bool check_inbound_ended();
     bool check_outbound_ended();
     void passive_close();

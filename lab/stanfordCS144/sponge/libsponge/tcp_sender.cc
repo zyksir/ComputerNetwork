@@ -35,9 +35,9 @@ void TCPSender::fill_window() {
     }
 
     size_t window_size = _window_size == 0 ? 1 : _window_size;
-    while (window_size > _next_seqno - _max_ackno) {
-        size_t remain = window_size - (_next_seqno - _max_ackno);
-        if (!_stream.eof()) {
+    while (window_size > _next_seqno - _abs_ackno) {
+        size_t remain = window_size - (_next_seqno - _abs_ackno);
+        if (!_stream.eof()) {  // Status: SYN_ACKED
             size_t payload_size = std::min(remain, TCPConfig::MAX_PAYLOAD_SIZE);
             TCPSegment segment;
             segment.payload() = Buffer(_stream.read(payload_size));
@@ -54,7 +54,7 @@ void TCPSender::fill_window() {
                 TCPSegment segment;
                 segment.header().fin = true;
                 send_no_empty_segment(segment);
-            }
+            }  // else, Status is in FIN_SENT or FIN_ACKED, in both case we don't need to fill window
             return;
         }
     }
@@ -64,21 +64,21 @@ void TCPSender::fill_window() {
 //! \param window_size The remote receiver's advertised window size
 void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) {
     // step1: update _segments_track and window_size
-    uint64_t abs_ackno = unwrap(ackno, _isn, _max_ackno);
+    uint64_t abs_ackno = unwrap(ackno, _isn, _abs_ackno);
     // illegal abs_ackno
     if (abs_ackno > _next_seqno) {
         return;
     }
     _window_size = static_cast<size_t>(window_size);
-    if (abs_ackno <= _max_ackno) {
+    if (abs_ackno <= _abs_ackno) {
         return;
     }
 
-    _max_ackno = abs_ackno;
+    _abs_ackno = abs_ackno;
     // remove fully-acknowledged segments
     while (!_segments_track.empty()) {
         const auto segment = _segments_track.front();
-        uint64_t max_seg_ackno = unwrap(segment.header().seqno, _isn, _max_ackno) + segment.length_in_sequence_space();
+        uint64_t max_seg_ackno = unwrap(segment.header().seqno, _isn, _abs_ackno) + segment.length_in_sequence_space();
         if (abs_ackno < max_seg_ackno) {
             break;
         }
@@ -86,9 +86,8 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
         _bytes_in_flight -= segment.length_in_sequence_space();
     }
 
-    // step 2: Set the RTO back to its “initial value.”
-    _timer.reset_rto();
     // step 3: If there is any outstanding data, restart the retransmission timer
+    // (in start(), we also reset rto to init_rto)
     // step 4: reset consecutive retransmissions to zero
     if (!_segments_track.empty()) {
         _timer.start();
@@ -96,7 +95,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
         _timer.close();
     }
 
-    // The TCPSender should ﬁll the window again if new space has opened up.
+    // The TCPSender should fill the window again if new space has opened up.
     fill_window();
 }
 
@@ -112,7 +111,6 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
         _timer.close();
         return;
     }
-    auto segment = _segments_track.front();
     _segments_out.push(_segments_track.front());
 
     // step 2: Reset the retransmission timer

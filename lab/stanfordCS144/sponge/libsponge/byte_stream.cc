@@ -15,8 +15,13 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 using namespace std;
 
 ByteStream::ByteStream(const size_t capacity)
-    : _capacity(capacity), _bytes_written(0), _bytes_read(0), _buffer{}, _buffer_size{0}, _end_input(false), _error(false) {
-}
+    : _capacity(capacity)
+    , _bytes_written(0)
+    , _bytes_read(0)
+    , _buffer{}
+    , _buffer_size{0}
+    , _end_input(false)
+    , _error(false) {}
 
 size_t ByteStream::write(const string &data) {
     size_t count = min(_capacity - _buffer_size, data.length());

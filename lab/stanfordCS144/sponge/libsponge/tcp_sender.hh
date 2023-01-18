@@ -29,7 +29,6 @@ class RetransmissionTimer {
         return false;
     }
     bool running() { return _running; }
-    void reset_rto() { _rto = _init_rto; }
     void reset_timer(const size_t window_size) {
         if (!running()) {
             return;  // this line should never be executed
@@ -38,7 +37,7 @@ class RetransmissionTimer {
         ++_consecutive_retransmissions;
         // If the window size is nonzero, Double the value of RTO
         if (window_size > 0) {
-            _rto *= 2;
+            _rto <<= 1;
         }
     }
     void start() {
@@ -78,7 +77,7 @@ class TCPSender {
 
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
-    uint64_t _max_ackno{0};
+    uint64_t _abs_ackno{0};
     uint16_t _window_size{1};
     uint64_t _bytes_in_flight{0};
 

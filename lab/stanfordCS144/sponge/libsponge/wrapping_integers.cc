@@ -26,6 +26,8 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) { return isn + static_cast<uin
 //! and the other stream runs from the remote TCPSender to the local TCPReceiver and
 //! has a different ISN.
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
+    // static constexpr uint32_t neg_threshold = (1u << 31);
+    // static constexpr uint64_t uint32_max = (1ul << 32);
     constexpr uint32_t neg_threshold = (1u << 31);
     constexpr uint64_t uint32_max = (1ul << 32);
     uint32_t offset = n - wrap(checkpoint, isn);
@@ -33,7 +35,8 @@ uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
     // 有可能此时 ret 对应的值在 checkpoint 后面
     // 这种情况下，offset 是负数，我们判断其符号位即可
     // 此时 ret 应该减去 1<<32
-    if ((offset & neg_threshold) && ret >= uint32_max)
+    // if ((offset & neg_threshold) && (ret>>32))
+    if ((offset & neg_threshold) && (ret >= uint32_max))
         ret -= uint32_max;
     return ret;
 }

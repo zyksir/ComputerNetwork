@@ -35,4 +35,4 @@ optional<WrappingInt32> TCPReceiver::ackno() const {
     return _isn + static_cast<uint32_t>(bytes_written) + (_reassembler.stream_out().input_ended() ? 1 : 0);
 }
 
-size_t TCPReceiver::window_size() const { return _capacity - _reassembler.stream_out().buffer_size(); }
+size_t TCPReceiver::window_size() const { return _reassembler.stream_out().remaining_capacity(); }

@@ -1,4 +1,4 @@
-#include "socket.hh"
+#include "tcp_sponge_socket.hh"
 #include "util.hh"
 
 #include <cstdlib>
@@ -13,7 +13,7 @@ void get_URL(const string &host, const string &path) {
     // the computer whose name is in the "host" string,
     // then request the URL path given in the "path" string.
     Address address = Address(host, "http");
-    TCPSocket socket = TCPSocket();
+    CS144TCPSocket socket = CS144TCPSocket();
     socket.connect(address);
 
     string request = "GET " + path + " HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\n\r\n";
@@ -24,6 +24,7 @@ void get_URL(const string &host, const string &path) {
         cout << socket.read();
     }
     socket.close();
+    socket.wait_until_closed();
 
     // Then you'll need to print out everything the server sends back,
     // (not just one call to read() -- everything) until you reach

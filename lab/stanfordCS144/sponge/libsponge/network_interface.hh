@@ -39,6 +39,17 @@ class NetworkInterface {
 
     //! outbound queue of Ethernet frames that the NetworkInterface wants sent
     std::queue<EthernetFrame> _frames_out{};
+    std::unordered_map<uint32_t, EthernetAddress> _ip_ethernet_cache{};
+    std::unordered_map<uint32_t, size_t> _ip_expire_time{};
+    std::unordered_map<uint32_t, size_t> _arp_expire_time{};
+    std::queue<std::pair<uint32_t, InternetDatagram>> _blocked_ip_datagram{};
+    size_t _ms_since_running{0};
+    // void broadcast_arp(const auto& EthernetAddress);
+    void update_ip_ethernet_cache(const uint32_t ip_address, const EthernetAddress &ethernet_address);
+    void send_arp_message(const uint32_t target_ip_address,
+                          const EthernetAddress &target_ethernet_address,
+                          const uint16_t opcode);
+    void send_ip_dgram(const InternetDatagram &dgram, const EthernetAddress &target_ethernet_address);
 
   public:
     //! \brief Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer) addresses

@@ -116,6 +116,7 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     // step 2: Reset the retransmission timer
     //  2.1 double rto if window_size is non zero
     //  2.2 increase _consecutive_retransmissions
+    // _timer.reset_timer(_window_size, _next_seqno == _bytes_in_flight);
     _timer.reset_timer(_window_size);
 }
 

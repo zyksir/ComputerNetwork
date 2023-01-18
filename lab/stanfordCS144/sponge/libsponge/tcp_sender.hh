@@ -29,6 +29,7 @@ class RetransmissionTimer {
         return false;
     }
     bool running() { return _running; }
+    // void reset_timer(const size_t window_size, const bool syn_sent) {
     void reset_timer(const size_t window_size) {
         if (!running()) {
             return;  // this line should never be executed
@@ -39,6 +40,10 @@ class RetransmissionTimer {
         if (window_size > 0) {
             _rto <<= 1;
         }
+
+        // if (syn_sent && _rto < 3000) {
+        //     _rto = 3000;
+        // }
     }
     void start() {
         _running = true;

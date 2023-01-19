@@ -26,17 +26,43 @@ void Router::add_route(const uint32_t route_prefix,
                        const uint8_t prefix_length,
                        const optional<Address> next_hop,
                        const size_t interface_num) {
-    cerr << "DEBUG: adding route " << Address::from_ipv4_numeric(route_prefix).ip() << "/" << int(prefix_length)
-         << " => " << (next_hop.has_value() ? next_hop->ip() : "(direct)") << " on interface " << interface_num << "\n";
+    // cerr << "DEBUG: adding route " << Address::from_ipv4_numeric(route_prefix).ip() << "/" << int(prefix_length)
+    //      << " => " << (next_hop.has_value() ? next_hop->ip() : "(direct)") << " on interface " << interface_num <<
+    //      "\n";
 
-    DUMMY_CODE(route_prefix, prefix_length, next_hop, interface_num);
-    // Your code here.
+    const auto key = make_pair(prefix_length, route_prefix);
+    const auto value = make_pair(interface_num, next_hop);
+    _forwarding_table.emplace(key, value);
 }
 
 //! \param[in] dgram The datagram to be routed
 void Router::route_one_datagram(InternetDatagram &dgram) {
-    DUMMY_CODE(dgram);
-    // Your code here.
+    static const uint32_t MASK = 0xffffffff;
+    using kv_type = decltype(*_forwarding_table.begin());
+    static const auto match_function = [](const uint32_t src_ip, const kv_type &key) {
+        const auto postfix_length = 32 - key.first.first;
+        const auto &route_prefix = key.first.second;
+        if (postfix_length == 32) {
+            return true;
+        } else if (postfix_length == 0) {
+            return route_prefix == src_ip;
+        }
+        const uint32_t mask = MASK << postfix_length;
+        return (route_prefix & mask) == (src_ip & mask);
+    };
+    if (dgram.header().ttl <= 1) {
+        return;
+    }
+    dgram.header().ttl--;
+    uint32_t dst = dgram.header().dst;
+    const auto this_match_function = [dst](const kv_type &key) { return match_function(dst, key); };
+    const auto it = find_if(_forwarding_table.begin(), _forwarding_table.end(), this_match_function);
+    if (it == _forwarding_table.end()) {
+        return;
+    }
+    auto [interface_num, next_hop] = it->second;
+    auto real_next_hop = next_hop.has_value() ? next_hop.value() : Address::from_ipv4_numeric(dgram.header().dst);
+    interface(interface_num).send_datagram(dgram, real_next_hop);
 }
 
 void Router::route() {

@@ -3,6 +3,7 @@
 
 #include "network_interface.hh"
 
+#include <map>
 #include <optional>
 #include <queue>
 
@@ -42,7 +43,17 @@ class AsyncNetworkInterface : public NetworkInterface {
 //! performs longest-prefix-match routing between them.
 class Router {
     //! The router's collection of network interfaces
+    // Another idea will be using a Trie. That is too complicated
+    struct ModCmp {
+        bool operator()(const std::pair<uint8_t, uint32_t> &key1, const std::pair<uint8_t, uint32_t> &key2) const {
+            if (key1.first != key2.first) {
+                return key1.first > key2.first;
+            }
+            return key1.second > key2.second;
+        }
+    };
     std::vector<AsyncNetworkInterface> _interfaces{};
+    std::map<std::pair<uint8_t, uint32_t>, std::pair<size_t, std::optional<Address>>, ModCmp> _forwarding_table{};
 
     //! Send a single datagram from the appropriate outbound interface to the next hop,
     //! as specified by the route with the longest prefix_length that matches the
